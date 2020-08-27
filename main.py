@@ -9,6 +9,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired
 from config import Config
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
 app.debug = True
@@ -16,6 +17,7 @@ app.config.from_object(Config)
 engine = create_engine('sqlite:///database.db', echo=True)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
+bcrypt = Bcrypt(app)
 
 app.config.update(dict(
     SECRET_KEY="powerful secretkey",
@@ -85,7 +87,7 @@ def login():
 
         if old_login:
 
-            if old_login.password ==  form.password.data:
+            if bcrypt.check_password_hash(old_login.password, form.password.data):
 
                 with app.app_context():
                     flask.username = form.username.data
@@ -108,7 +110,8 @@ def SignUp():
     session = Session()
     if form.validate_on_submit():
         # Query the database to post the information
-        new_user = User(username=form.username.data, firstname=form.firstname.data, password=form.password.data,
+        hashed_password = bcrypt.generate_password_hash(form.password.data)
+        new_user = User(username=form.username.data, firstname=form.firstname.data, password=hashed_password,
                         lastname=form.lastname.data, phone=form.phone.data, major=form.major.data)
         new_login = Login(username=form.username.data, password=form.password.data)
         session.add(new_user)
